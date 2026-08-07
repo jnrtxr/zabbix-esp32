@@ -1,0 +1,13 @@
+# Credenciais - NUNCA versionar
+include/secrets.h
+
+# PlatformIO build
+.pio/
+.vscode/
+
+# Mockup local (opcional, pode versionar se quiser)
+# mockup_display.html
+
+# OS files
+.DS_Store
+Thumbs.db

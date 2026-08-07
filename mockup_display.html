@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Simulador Display 2.8" 320x240 - Soufer + Zabbix</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+  body {
+    background: #0c0c12;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    font-family: 'Inter', sans-serif;
+    margin: 0;
+    padding: 20px;
+  }
+  h2 { color: #8af; margin-bottom: 4px; font-size: 16px; font-weight: 600; }
+  .subtitle { color: #555; font-size: 11px; margin-bottom: 24px; }
+
+  .display-frame {
+    background: #1a1a22;
+    border: 3px solid #2a2a35;
+    border-radius: 12px;
+    padding: 10px;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.7);
+  }
+
+  /* 320x240 @ 2.5x para melhor visualizacao */
+  .display {
+    width: 800px;
+    height: 600px;
+    background: #0a0a10;
+    position: relative;
+    overflow: hidden;
+    border-radius: 6px;
+  }
+
+  /* HEADER */
+  .hdr {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 50px;
+    background: #0e0e16;
+    display: flex; align-items: center;
+    justify-content: space-between;
+    padding: 0 24px;
+    border-bottom: 1px solid #1c1c28;
+  }
+  .hdr img { height: 22px; opacity: 0.9; }
+  .hdr .right { display: flex; align-items: center; gap: 10px; }
+  .hdr .wifi { width: 8px; height: 8px; border-radius: 50%; background: #0C0; }
+  .hdr .count {
+    background: #1a2235; color: #8af; font-size: 12px; font-weight: 600;
+    padding: 4px 10px; border-radius: 10px;
+  }
+
+  /* ACCENT */
+  .accent { position: absolute; top: 50px; left: 0; width: 100%; height: 4px; }
+
+  /* CONTENT */
+  .content {
+    position: absolute;
+    top: 62px; left: 24px; right: 24px; bottom: 46px;
+    display: flex; flex-direction: column;
+    gap: 12px;
+    overflow: hidden;
+  }
+
+  .row-sev {
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .sev-group { display: flex; align-items: center; gap: 10px; }
+  .sev-dot { width: 12px; height: 12px; border-radius: 50%; }
+  .sev-name { font-size: 15px; font-weight: 700; }
+  .age { color: #888; font-size: 14px; font-weight: 500; }
+
+  .row-host { display: flex; align-items: center; gap: 10px; }
+  .host-name { color: #99aacc; font-size: 17px; font-weight: 600; }
+  .ack-badge {
+    color: #0C0; border: 1px solid #0C0;
+    border-radius: 4px; padding: 2px 8px;
+    font-size: 10px; font-weight: 700;
+  }
+
+  .problem {
+    color: #fff; font-size: 15px; font-weight: 700;
+    line-height: 1.4;
+  }
+
+  .divider { width: 100%; height: 1px; background: #1c1c28; margin: 6px 0; }
+
+  /* Details grid */
+  .details {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px 20px;
+  }
+  .detail-item { display: flex; flex-direction: column; gap: 2px; }
+  .detail-label { color: #445; font-size: 10px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; }
+  .detail-value { color: #bbb; font-size: 13px; font-weight: 600; }
+  .detail-value.highlight { color: #5588cc; }
+  .detail-value.opdata { color: #cc9; }
+
+  /* Tags */
+  .tags-row { display: flex; flex-wrap: wrap; gap: 6px; }
+  .tag {
+    font-size: 11px; padding: 4px 10px;
+    border-radius: 4px; font-weight: 500;
+  }
+  .tag-scope { background: #0f2030; color: #5ac; }
+  .tag-component { background: #200f30; color: #b8b; }
+  .tag-class { background: #0f2a0f; color: #6c6; }
+  .tag-target { background: #2a200f; color: #ca8; }
+
+  /* ACTIONS TABLE */
+  .actions-title {
+    color: #556; font-size: 10px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.5px;
+    margin-top: 4px;
+  }
+  .actions-list {
+    display: flex; flex-direction: column; gap: 5px;
+  }
+  .action-row {
+    display: flex; align-items: center; gap: 12px;
+    padding: 5px 10px;
+    background: #0e0e16;
+    border-radius: 4px;
+  }
+  .action-user { color: #99aacc; font-size: 11px; font-weight: 500; min-width: 140px; }
+  .action-media { color: #888; font-size: 10px; min-width: 50px; }
+  .action-status {
+    font-size: 10px; font-weight: 700;
+    padding: 2px 8px; border-radius: 4px;
+  }
+  .status-sent { background: #0a2a0a; color: #0C0; }
+  .status-failed { background: #2a0a0a; color: #f44; }
+
+  /* FOOTER */
+  .ftr {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 40px;
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+    border-top: 1px solid #1c1c28;
+  }
+  .pg-dot {
+    width: 9px; height: 9px; border-radius: 50%; background: #252530;
+    transition: all 0.3s;
+  }
+  .pg-dot.active { width: 24px; border-radius: 5px; }
+
+  /* BOOT */
+  .boot-screen {
+    width: 100%; height: 100%;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 20px;
+    background: radial-gradient(ellipse at center, #10101a 0%, #0a0a10 100%);
+  }
+  .boot-screen img { height: 44px; }
+  .boot-screen .sep { width: 60px; height: 1px; background: #2a2a35; }
+  .boot-screen .txt { color: #445; font-size: 14px; font-weight: 500; letter-spacing: 3px; }
+  .boot-screen .bar { width: 140px; height: 4px; background: #1a1a25; border-radius: 2px; overflow: hidden; position: relative; }
+  .boot-screen .fill { position: absolute; top:0; left:0; width:40%; height:100%; background:#07f; border-radius:2px; animation: ld 1.5s ease-in-out infinite; }
+  @keyframes ld { 0%{left:-40%} 100%{left:100%} }
+
+  /* CLEAR */
+  .clear-screen {
+    width: 100%; height: 100%;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 16px;
+    position: relative;
+  }
+  .clear-screen img { height: 22px; position: absolute; top: 16px; left: 18px; opacity: 0.6; }
+  .clear-screen .ring {
+    width: 60px; height: 60px; border-radius: 50%;
+    border: 3px solid #0C0; display: flex; align-items: center; justify-content: center;
+    color: #0C0; font-size: 30px; box-shadow: 0 0 25px rgba(0,204,0,0.12);
+  }
+  .clear-screen h3 { color: #ddd; font-size: 20px; margin: 0; font-weight: 600; }
+  .clear-screen p { color: #556; font-size: 13px; margin: 0; }
+
+  /* WIFI ERR */
+  .wifi-screen {
+    width: 100%; height: 100%;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 12px;
+    position: relative;
+  }
+  .wifi-screen img { height: 22px; position: absolute; top: 16px; left: 18px; opacity: 0.6; }
+  .wifi-screen .icon { color: #f44; font-size: 42px; }
+  .wifi-screen h3 { color: #f44; font-size: 18px; margin: 0; }
+  .wifi-screen p { color: #556; font-size: 13px; margin: 0; }
+
+  .controls {
+    margin-top: 24px; display: flex; gap: 6px;
+    flex-wrap: wrap; justify-content: center; max-width: 700px;
+  }
+  .controls button {
+    padding: 8px 14px; border: 1px solid #2a2a35; border-radius: 6px;
+    background: #14141c; color: #777; cursor: pointer;
+    font-size: 11px; font-family: 'Inter', sans-serif; font-weight: 500;
+    transition: all 0.15s;
+  }
+  .controls button:hover { background: #1e1e2a; color: #fff; border-color: #444; }
+  .controls button.active { background: #1a2a3a; color: #8af; border-color: #4488cc; }
+  .label { color: #444; font-size: 10px; margin-top: 16px; }
+</style>
+</head>
+<body>
+
+<h2>Zabbix Monitor ESP32</h2>
+<div class="subtitle">Display 2.8" (320x240) - alertas + acoes de notificacao</div>
+
+<div class="display-frame">
+  <div class="display" id="screen"></div>
+</div>
+
+<div class="controls">
+  <button onclick="showAlert(0)" class="active">1</button>
+  <button onclick="showAlert(1)">2</button>
+  <button onclick="showAlert(2)">3</button>
+  <button onclick="showAlert(3)">4</button>
+  <button onclick="showAlert(4)">5</button>
+  <button onclick="showAllClear()">OK</button>
+  <button onclick="showBooting()">Boot</button>
+  <button onclick="showWifiErr()">WiFi Err</button>
+  <button onclick="startCycle()">Ciclar</button>
+</div>
+
+<div class="label">monitoramento.gruposoufer.com.br - alertas + notificacoes reais</div>
+
+<script>
+const LOGO = "https://www.soufer.com.br/wp-content/uploads/2025/12/Logo_Soufer_Horizontal_Neg.png";
+
+const alerts = [
+  {
+    host: "UAPCB1-ENG", eventid: "9998994",
+    problem: "ICMP Ping: Unavailable by ICMP ping",
+    severity: 4, sev_name: "Alta", ack: false,
+    clock: 1786012233, opdata: "",
+    scope: "availability", component: "network", cls: "network", target: "icmp",
+    glpi: "78185",
+    actions: [
+      { user: "Admin (Zabbix)", media: "GLPi", status: "sent" },
+      { user: "hitss (Global Hitss)", media: "Email", status: "failed" },
+      { user: "jsilva (Junior Silva)", media: "Email", status: "failed" },
+      { user: "tcorrea (Thiago Correa)", media: "Email", status: "failed" }
+    ]
+  },
+  {
+    host: "OLT VSOL CB2", eventid: "9733375",
+    problem: "ONU PON 2 ID 1 Offline",
+    severity: 4, sev_name: "Alta", ack: true,
+    clock: 1784635596, opdata: "",
+    scope: "availability", component: "onu", cls: "", target: "",
+    glpi: "76198",
+    actions: [
+      { user: "Admin (Zabbix)", media: "GLPi", status: "sent" },
+      { user: "hitss (Global Hitss)", media: "Email", status: "failed" },
+      { user: "jsilva (Junior Silva)", media: "Email", status: "failed" },
+      { user: "tcorrea (Thiago Correa)", media: "Email", status: "failed" }
+    ]
+  },
+  {
+    host: "OLT VSOL CB2", eventid: "9733374",
+    problem: "ONU PON 4 ID 15 Offline",
+    severity: 4, sev_name: "Alta", ack: true,
+    clock: 1784635596, opdata: "",
+    scope: "availability", component: "onu", cls: "", target: "",
+    glpi: "76197",
+    actions: [
+      { user: "Admin (Zabbix)", media: "GLPi", status: "sent" },
+      { user: "hitss (Global Hitss)", media: "Email", status: "failed" },
+      { user: "jsilva (Junior Silva)", media: "Email", status: "failed" }
+    ]
+  },
+  {
+    host: "OLT VSOL CB2", eventid: "9733373",
+    problem: "ONU PON 4 ID 10 Offline",
+    severity: 4, sev_name: "Alta", ack: true,
+    clock: 1784635596, opdata: "",
+    scope: "availability", component: "onu", cls: "", target: "",
+    glpi: "76196",
+    actions: [
+      { user: "Admin (Zabbix)", media: "GLPi", status: "sent" },
+      { user: "hitss (Global Hitss)", media: "Email", status: "failed" },
+      { user: "jsilva (Junior Silva)", media: "Email", status: "failed" }
+    ]
+  },
+  {
+    host: "SJBKPP02", eventid: "9700684",
+    problem: "FS [BACKUP_VOL(K:)]: Space is low (>80%, 77TB)",
+    severity: 2, sev_name: "Atencao", ack: true,
+    clock: 1784385202, opdata: "Space used: 86.2%",
+    scope: "capacity", component: "storage", cls: "os", target: "windows",
+    glpi: "75882",
+    actions: [
+      { user: "Admin (Zabbix)", media: "GLPi", status: "sent" },
+      { user: "hitss (Global Hitss)", media: "Email", status: "failed" },
+      { user: "jsilva (Junior Silva)", media: "Email", status: "failed" },
+      { user: "tcorrea (Thiago Correa)", media: "Email", status: "failed" }
+    ]
+  }
+];
+
+const sevColors = {
+  0: "#7b8b9e", 1: "#5588dd", 2: "#e6c040", 3: "#e88030", 4: "#e84040", 5: "#ff2020"
+};
+
+function calcAge(ts) {
+  const now = Math.floor(Date.now()/1000);
+  const diff = now - ts;
+  const hrs = Math.floor(diff / 3600);
+  const days = Math.floor(hrs / 24);
+  if (days > 0) return `${days}d ${hrs % 24}h`;
+  if (hrs > 0) return `${hrs}h ${Math.floor((diff%3600)/60)}m`;
+  return `${Math.floor(diff/60)}m`;
+}
+
+function formatDate(ts) {
+  const d = new Date(ts * 1000);
+  return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+}
+
+let cycleInterval = null;
+
+function showAlert(idx) {
+  stopCycle();
+  renderAlert(idx);
+  updateButtons(idx);
+}
+
+function renderAlert(idx) {
+  const a = alerts[idx];
+  const color = sevColors[a.severity];
+  const total = alerts.length;
+  const age = calcAge(a.clock);
+  const startDate = formatDate(a.clock);
+
+  let ackHtml = a.ack ? '<span class="ack-badge">ACK</span>' : '';
+
+  // Tags
+  let tagsHtml = '';
+  if (a.scope) tagsHtml += `<span class="tag tag-scope">${a.scope}</span>`;
+  if (a.component) tagsHtml += `<span class="tag tag-component">${a.component}</span>`;
+  if (a.cls) tagsHtml += `<span class="tag tag-class">${a.cls}</span>`;
+  if (a.target) tagsHtml += `<span class="tag tag-target">${a.target}</span>`;
+
+  // Opdata
+  let opdataHtml = '';
+  if (a.opdata) {
+    opdataHtml = `<div class="detail-item"><span class="detail-label">Op. Data</span><span class="detail-value opdata">${a.opdata}</span></div>`;
+  }
+
+  // Actions
+  let actionsHtml = '';
+  if (a.actions && a.actions.length > 0) {
+    let rows = a.actions.map(act => {
+      const statusCls = act.status === 'sent' ? 'status-sent' : 'status-failed';
+      const statusText = act.status === 'sent' ? 'Sent' : 'Failed';
+      return `<div class="action-row">
+        <span class="action-user">${act.user}</span>
+        <span class="action-media">${act.media}</span>
+        <span class="action-status ${statusCls}">${statusText}</span>
+      </div>`;
+    }).join('');
+    actionsHtml = `<div class="actions-title">Notificacoes</div><div class="actions-list">${rows}</div>`;
+  }
+
+  // Dots
+  let dotsHtml = '';
+  for (let i = 0; i < total; i++) {
+    const c = sevColors[alerts[i].severity];
+    dotsHtml += `<div class="pg-dot ${i===idx?'active':''}" style="background:${i===idx?c:'#252530'}"></div>`;
+  }
+
+  document.getElementById('screen').innerHTML = `
+    <div class="hdr">
+      <img src="${LOGO}" alt="Soufer">
+      <div class="right">
+        <div class="wifi"></div>
+        <span class="count">${total} alertas</span>
+      </div>
+    </div>
+    <div class="accent" style="background: linear-gradient(90deg, ${color} 0%, transparent 60%)"></div>
+    <div class="content">
+      <div class="row-sev">
+        <div class="sev-group">
+          <div class="sev-dot" style="background:${color}"></div>
+          <span class="sev-name" style="color:${color}">${a.sev_name}</span>
+        </div>
+        <span class="age">${age}</span>
+      </div>
+      <div class="row-host">
+        <span class="host-name">${a.host}</span>
+        ${ackHtml}
+      </div>
+      <div class="problem">${a.problem}</div>
+      <div class="divider"></div>
+      <div class="details">
+        <div class="detail-item">
+          <span class="detail-label">Inicio</span>
+          <span class="detail-value">${startDate}</span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">GLPI</span>
+          <span class="detail-value highlight">#${a.glpi}</span>
+        </div>
+        ${opdataHtml}
+      </div>
+      <div class="tags-row">${tagsHtml}</div>
+      <div class="divider"></div>
+      ${actionsHtml}
+    </div>
+    <div class="ftr">${dotsHtml}</div>
+  `;
+}
+
+function showAllClear() {
+  stopCycle();
+  document.getElementById('screen').innerHTML = `
+    <div class="clear-screen">
+      <img src="${LOGO}" alt="Soufer">
+      <div class="ring">&#10003;</div>
+      <h3>Sem alertas</h3>
+      <p>Todos os sistemas operacionais</p>
+    </div>
+  `;
+}
+
+function showBooting() {
+  stopCycle();
+  document.getElementById('screen').innerHTML = `
+    <div class="boot-screen">
+      <img src="${LOGO}" alt="Soufer">
+      <div class="sep"></div>
+      <div class="txt">ZABBIX MONITOR</div>
+      <div class="bar"><div class="fill"></div></div>
+    </div>
+  `;
+}
+
+function showWifiErr() {
+  stopCycle();
+  document.getElementById('screen').innerHTML = `
+    <div class="wifi-screen">
+      <img src="${LOGO}" alt="Soufer">
+      <div class="icon">&#9888;</div>
+      <h3>Sem conexao WiFi</h3>
+      <p>Tentando reconectar...</p>
+    </div>
+  `;
+}
+
+function startCycle() {
+  stopCycle();
+  let idx = 0;
+  renderAlert(idx);
+  cycleInterval = setInterval(() => {
+    idx = (idx + 1) % alerts.length;
+    renderAlert(idx);
+  }, 6000);
+}
+
+function stopCycle() {
+  if (cycleInterval) { clearInterval(cycleInterval); cycleInterval = null; }
+}
+
+function updateButtons(activeIdx) {
+  document.querySelectorAll('.controls button').forEach((b, i) => {
+    b.classList.toggle('active', i === activeIdx);
+  });
+}
+
+showAlert(0);
+</script>
+</body>
+</html>
