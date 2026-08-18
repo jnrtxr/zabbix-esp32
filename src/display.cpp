@@ -128,13 +128,17 @@ void display::showAlert(const ZabbixAlert& alert, int index, int total) {
     tft.fillRect(0, 0, W, 30, HEADER_BG);
     // Logo bitmap
     tft.pushImage(8, 7, LOGO_W, LOGO_H, logo_soufer);
-    // Wifi dot
-    tft.fillCircle(W - 80, 15, 4, GREEN);
-    // Alert count
-    tft.setTextDatum(TL_DATUM);
+    // Alert count + wifi dot alinhados
+    tft.setTextDatum(TR_DATUM);
     tft.setTextColor(0x9CF3, HEADER_BG);
     String countStr = String(total) + " alertas";
-    tft.drawString(countStr, W - 72, 8, 1);
+    int textW = tft.textWidth(countStr, 1);
+    int textX = W - 10;
+    int textY = 11;
+    tft.drawString(countStr, textX, textY, 1);
+    // Wifi dot alinhado à esquerda do texto
+    tft.fillCircle(textX - textW - 10, 15, 4, GREEN);
+    tft.setTextDatum(TL_DATUM);
 
     // ===== ACCENT LINE (y 30-33) =====
     tft.fillRect(0, 30, W, 3, accent);
