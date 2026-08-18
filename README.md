@@ -6,24 +6,26 @@ acessível por qualquer dispositivo na mesma rede local.
 
 ## Funcionalidades
 
-- Mostra alertas ativos do Zabbix com cor por severidade
-- Exibe: host, problema, duração, tags, opdata, chamado GLPI, status das notificações
+- Mostra alertas ativos do Zabbix com cor por severidade (usa trigger.get — exatamente o "Current Problems")
+- Exibe: host, problema, duração, severidade
+- Logo da empresa no header do display
 - Dashboard web (HTTP) acessível via navegador no IP do ESP32
 - API JSON em `/api/alerts` para integrações externas
 - Tela "Tudo OK" quando não há problemas ativos
-- Auto-refresh: consulta o Zabbix a cada 30 segundos
+- Auto-refresh: consulta o Zabbix a cada 10 segundos
 
 ## Hardware suportado
 
 ### Display principal (recomendado)
 
-**Módulo ESP32 com LCD TFT 2.8" 320x240 (ILI9341) + Touch**
+**Módulo ESP32-2432S028R (Cheap Yellow Display / CYD)**
 - Resolução: 320x240 pixels
 - Driver: ILI9341
 - Interface: SPI
-- Touch screen capacitivo
+- Touch screen resistivo (XPT2046)
 - ESP32 integrado com WiFi/Bluetooth
-- [Link AliExpress](https://pt.aliexpress.com/item/1005008314695130.html)
+- Chip USB: CH340
+- Alimentação: 5V USB
 
 Com essa resolução, todas as informações cabem em uma única tela:
 severidade, host, problema, data de início, duração, GLPI, opdata, tags
@@ -121,7 +123,7 @@ Abra esse IP no navegador de qualquer dispositivo na mesma rede.
 
 ### 5. Ajustes finos
 
-- `POLL_INTERVAL_MS` (em `main.cpp`): intervalo entre consultas ao Zabbix (padrão: 30s)
+- `POLL_INTERVAL_MS` (em `main.cpp`): intervalo entre consultas ao Zabbix (padrão: 10s)
 - `CYCLE_INTERVAL_MS`: tempo de exibição de cada alerta na tela (padrão: 4s)
 - `tft.setRotation()` em `display.cpp`: rotação do display (0 a 3)
 
