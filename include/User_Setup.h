@@ -1,17 +1,22 @@
-// Configuração TFT_eSPI para LilyGO TTGO T-Display (ESP32 + ST7789 240x135)
-// Se usar outro display, veja o README.md para trocar este arquivo.
+// Configuracao TFT_eSPI para ESP32-2432S028R (Cheap Yellow Display / CYD)
+// Display: ILI9341 2.8" 320x240 | Chip USB: CH340
+// Referencia: https://gist.github.com/panapol-p/9b2441b42fef15212b86e49722d39c63
 
-#define ST7789_DRIVER
-#define TFT_WIDTH  135
-#define TFT_HEIGHT 240
+#define ILI9341_2_DRIVER
+#define TFT_WIDTH  240
+#define TFT_HEIGHT 320
 
-#define TFT_MOSI 19
-#define TFT_SCLK 18
-#define TFT_CS    5
-#define TFT_DC   16
-#define TFT_RST  23
-#define TFT_BL    4
+// Pinagem ESP32-2432S028R
+#define TFT_MISO 12
+#define TFT_MOSI 13
+#define TFT_SCLK 14
+#define TFT_CS   15
+#define TFT_DC    2
+#define TFT_RST  12
+#define TFT_BL   21
 #define TFT_BACKLIGHT_ON HIGH
+
+#define TOUCH_CS 33
 
 #define LOAD_GLCD
 #define LOAD_FONT2
@@ -22,6 +27,6 @@
 #define LOAD_GFXFF
 #define SMOOTH_FONT
 
-#define SPI_FREQUENCY       40000000
+#define SPI_FREQUENCY       15999999
 #define SPI_READ_FREQUENCY  20000000
-#define SPI_TOUCH_FREQUENCY 2500000
+#define SPI_TOUCH_FREQUENCY  600000

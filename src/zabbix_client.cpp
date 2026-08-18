@@ -65,17 +65,25 @@ bool ZabbixClient::login() {
 int ZabbixClient::fetchProblems(ZabbixAlert alerts[], int maxAlerts) {
     StaticJsonDocument<768> req;
     req["jsonrpc"] = "2.0";
-    req["method"] = "problem.get";
+    req["method"] = "trigger.get";
 
     JsonObject params = req.createNestedObject("params");
-    params["output"] = "extend";
-    params["recent"] = false;          // false = só problemas ainda abertos
-    params["sortfield"][0] = "eventid";
+    params["output"][0] = "triggerid";
+    params["output"][1] = "description";
+    params["output"][2] = "priority";
+    params["output"][3] = "lastchange";
+    params["selectHosts"][0] = "name";
+    params["only_true"] = 1;           // apenas triggers em estado PROBLEM
+    params["active"] = 1;              // apenas hosts ativos
+    params["monitored"] = 1;           // apenas hosts monitorados
+    params["skipDependent"] = 1;       // pula triggers dependentes
+    params["sortfield"][0] = "lastchange";
     params["sortorder"] = "DESC";
     params["limit"] = maxAlerts;
 
-    // Nota: "selectHosts" não existe em problem.get no Zabbix 7.0+.
-    // O hostname será obtido via eventid/objectid se necessário no futuro.
+    // Filtro: value=1 significa "em estado de problema"
+    JsonObject filter = params.createNestedObject("filter");
+    filter["value"] = 1;
 
     if (!usingApiToken) {
         req["auth"] = authToken;
@@ -86,11 +94,10 @@ int ZabbixClient::fetchProblems(ZabbixAlert alerts[], int maxAlerts) {
     serializeJson(req, body);
     String response = jsonRpcRequest(body);
 
-    // O JSON de resposta pode ser grande dependendo de quantos problemas existem.
     DynamicJsonDocument doc(8192);
     DeserializationError err = deserializeJson(doc, response);
     if (err) {
-        Serial.print("[Zabbix] Falha ao decodificar problem.get: ");
+        Serial.print("[Zabbix] Falha ao decodificar trigger.get: ");
         Serial.println(err.c_str());
         return 0;
     }
@@ -103,32 +110,24 @@ int ZabbixClient::fetchProblems(ZabbixAlert alerts[], int maxAlerts) {
 
     JsonArray result = doc["result"].as<JsonArray>();
     int count = 0;
-    unsigned long now = millis() / 1000; // aproximação; ver nota no README sobre NTP
 
-    for (JsonObject problem : result) {
+    for (JsonObject trigger : result) {
         if (count >= maxAlerts) break;
 
         ZabbixAlert& a = alerts[count];
-        a.problemName = problem["name"].as<String>();
-        a.severity = problem["severity"].as<int>();
-        a.acknowledged = problem["acknowledged"].as<int>() == 1;
+        a.problemName = trigger["description"].as<String>();
+        a.severity = trigger["priority"].as<int>();
+        a.acknowledged = false; // trigger.get nao tem esse campo
 
-        long clock = problem["clock"].as<long>();
-        // "clock" vem em epoch Unix (segundos). Calculado corretamente
-        // quando o ESP32 sincroniza a hora via NTP (ver setup() no main.cpp).
+        long lastchange = trigger["lastchange"].as<long>();
         time_t nowEpoch;
         time(&nowEpoch);
-        a.ageSeconds = (unsigned long)(nowEpoch - clock);
+        a.ageSeconds = (unsigned long)(nowEpoch - lastchange);
 
-        // No Zabbix 7.0+ sem selectHosts, o campo "hosts" não vem em problem.get.
-        // Usamos o opdata se disponível, senão marcamos como desconhecido.
-        if (problem.containsKey("hosts")) {
-            JsonArray hosts = problem["hosts"].as<JsonArray>();
-            if (hosts.size() > 0) {
-                a.hostName = hosts[0]["name"].as<String>();
-            } else {
-                a.hostName = "?";
-            }
+        // Hosts vem no selectHosts
+        JsonArray hosts = trigger["hosts"].as<JsonArray>();
+        if (hosts.size() > 0) {
+            a.hostName = hosts[0]["name"].as<String>();
         } else {
             a.hostName = "?";
         }

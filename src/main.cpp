@@ -6,7 +6,7 @@
 #include "web_server.h"
 
 // --- Configurações de tempo (ajuste ao seu gosto) ---
-const unsigned long POLL_INTERVAL_MS   = 30000; // busca novos alertas a cada 30s
+const unsigned long POLL_INTERVAL_MS   = 10000; // busca novos alertas a cada 10s
 const unsigned long CYCLE_INTERVAL_MS  = 4000;  // troca de alerta na tela a cada 4s
 
 ZabbixAlert alerts[MAX_ALERTS];
@@ -52,8 +52,13 @@ void pollZabbix() {
         return;
     }
 
-    alertCount = zabbix.fetchProblems(alerts, MAX_ALERTS);
-    currentAlertIndex = 0;
+    int newCount = zabbix.fetchProblems(alerts, MAX_ALERTS);
+    if (newCount != alertCount) {
+        alertCount = newCount;
+        if (currentAlertIndex >= alertCount) currentAlertIndex = 0;
+    } else {
+        alertCount = newCount;
+    }
     webserver::updateAlerts(alerts, alertCount);
     Serial.printf("Alertas encontrados: %d\n", alertCount);
 }
